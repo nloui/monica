@@ -16,17 +16,32 @@ class StringHelper
     {
         $first = true;
         $queryString = '';
-        $searchTerm = DB::connection()->getPdo()->quote('%'.$searchTerm.'%');
+        $searchTerms = explode(' ', $searchTerm);
 
-        foreach ($array as $column) {
-            if ($first) {
-                $first = false;
-            } else {
-                $queryString .= ' or ';
+        foreach ($searchTerms as $searchTerm) {
+            $searchTerm = DB::connection()->getPdo()->quote('%'.$searchTerm.'%');
+
+            foreach ($array as $column) {
+                if ($first) {
+                    $first = false;
+                } else {
+                    $queryString .= ' or ';
+                }
+                $queryString .= $column.' LIKE '.$searchTerm;
             }
-            $queryString .= $column.' LIKE '.$searchTerm;
         }
 
         return $queryString;
+    }
+
+    /**
+     * Test if string is null or whitespace.
+     *
+     * @param  mixed $text
+     * @return bool
+     */
+    public static function isNullOrWhitespace($text) : bool
+    {
+        return ctype_space($text) || $text === '' || is_null($text);
     }
 }

@@ -1,26 +1,26 @@
-<div class="col-xs-12 section-title">
-  <img src="/img/people/debt/bill.svg" class="icon-section icon-money">
+<div class="col-12 section-title">
+  <img src="img/people/debt/bill.svg" class="icon-section icon-money">
   <h3>
     {{ trans('people.debt_title') }}
 
     <span class="{{ htmldir() == 'ltr' ? 'fr' : 'fl' }}">
-      <a href="{{ route('people.debt.add', $contact) }}" class="btn">{{ trans('people.debt_add_cta') }}</a>
+      <a href="{{ route('people.debts.create', $contact) }}" class="btn">{{ trans('people.debt_add_cta') }}</a>
     </span>
   </h3>
 </div>
 
 @if (!$contact->hasDebt())
 
-  <div class="col-xs-12" cy-name="debt-blank-state">
+  <div class="col-12" cy-name="debt-blank-state">
     <div class="section-blank">
       <h3>{{ trans('people.debts_blank_title', ['name' => $contact->first_name]) }}</h3>
-      <a href="{{ route('people.debt.add', $contact) }}" cy-name="add-debt-button">{{ trans('people.debt_add_cta') }}</a>
+      <a href="{{ route('people.debts.create', $contact) }}" cy-name="add-debt-button">{{ trans('people.debt_add_cta') }}</a>
     </div>
   </div>
 
 @else
 
-  <div class="col-xs-12 debts-list">
+  <div class="col-12 debts-list">
 
     <ul class="table">
       @foreach($contact->debts as $debt)
@@ -46,7 +46,7 @@
           @endif
         </div>
         <div class="table-cell list-actions">
-          <a href="{{ route('people.debt.edit', [$contact, $debt]) }}" cy-name="edit-debt-button-{{ $debt->id }}">
+          <a href="{{ route('people.debts.edit', [$contact, $debt]) }}" cy-name="edit-debt-button-{{ $debt->id }}">
             <i class="fa fa-pencil" aria-hidden="true"></i>
           </a>
           <a href="#" cy-name="delete-debt-button-{{ $debt->id }}" onclick="if (confirm('{{ trans('people.debt_delete_confirmation') }}')) { $(this).closest('.table-row').find('.entry-delete-form').submit(); } return false;">
@@ -54,9 +54,9 @@
           </a>
         </div>
 
-        <form method="POST" action="{{ route('people.debt.delete', [$contact, $debt]) }}" class="entry-delete-form hidden">
-          {{ method_field('DELETE') }}
-          {{ csrf_field() }}
+        <form method="POST" action="{{ route('people.debts.destroy', [$contact, $debt]) }}" class="entry-delete-form hidden">
+          @method('DELETE')
+          @csrf
         </form>
       </li>
       @endforeach

@@ -1,5 +1,5 @@
-<div class="col-xs-12 section-title">
-  <img src="/img/people/activities.svg" class="icon-section icon-activities">
+<div class="col-12 section-title">
+  <img src="img/people/activities.svg" class="icon-section icon-activities">
   <h3>
     {{ trans('people.section_personal_activities') }}
 
@@ -11,7 +11,7 @@
 
 @if ($contact->activities->count() == 0)
 
-  <div class="col-xs-12" cy-name="activities-blank-state">
+  <div class="col-12" cy-name="activities-blank-state">
     <div class="section-blank">
       <h3>{{ trans('people.activities_blank_title', ['name' => $contact->first_name]) }}</h3>
       <a href="{{ route('activities.add', $contact) }}">{{ trans('people.activities_blank_add_activity') }}</a>
@@ -20,13 +20,13 @@
 
 @else
 
-  <div class="col-xs-12 activities-list">
+  <div class="col-12 activities-list">
 
     <ul class="table">
       @foreach($contact->activities as $activity)
       <li class="table-row" cy-name="activity-body-{{ $activity->id }}">
         <div class="table-cell date">
-          {{ \App\Helpers\DateHelper::getShortDate($activity->date_it_happened) }}
+          {{ App\Helpers\DateHelper::getShortDate($activity->date_it_happened) }}
         </div>
         <div class="table-cell">
           {{ $activity->getSummary() }}
@@ -44,8 +44,8 @@
         </div>
 
         <form method="POST" action="{{ route('activities.delete', [$activity, $contact]) }}" class="entry-delete-form hidden">
-          {{ method_field('DELETE') }}
-          {{ csrf_field() }}
+          @method('DELETE')
+          @csrf
         </form>
       </li>
 

@@ -10,21 +10,17 @@ use App\Http\Resources\RelationshipType\RelationshipType as RelationshipTypeReso
 class ApiRelationshipTypeController extends ApiController
 {
     /**
-     * Account ID column name.
-     */
-    const ACCOUNT_ID = 'account_id';
-
-    /**
      * Get all relationship types in an instance.
      *
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     *
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
         try {
             $relationshipTypes = auth()->user()->account->relationshipTypes()
-                                                        ->paginate($this->getLimitPerPage());
+                                ->paginate($this->getLimitPerPage());
         } catch (ModelNotFoundException $e) {
             return $this->respondNotFound();
         }
@@ -35,15 +31,15 @@ class ApiRelationshipTypeController extends ApiController
     /**
      * Get the detail of a given relationship type.
      *
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     *
+     * @return RelationshipTypeResource|\Illuminate\Http\JsonResponse
      */
     public function show(Request $request, $id)
     {
         try {
-            $relationshipType = RelationshipType::where(static::ACCOUNT_ID, auth()->user()->account_id)
-                                                        ->where('id', $id)
-                                                        ->firstOrFail();
+            $relationshipType = RelationshipType::where('account_id', auth()->user()->account_id)
+                                ->findOrFail($id);
         } catch (ModelNotFoundException $e) {
             return $this->respondNotFound();
         }

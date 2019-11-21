@@ -23,7 +23,7 @@
     @include('partials.errors')
 
     <form action="{{ route('people.relationships.store', $contact) }}" method="POST">
-      {{ csrf_field() }}
+      @csrf
 
       {{-- New contact / link existing --}}
       <div class="pa4-ns ph3 pv2 mb3 mb0-ns bb b--gray-monica">
@@ -51,19 +51,19 @@
               <div class="dtc pr2">
                 <form-input
                   value=""
-                  v-bind:input-type="'text'"
-                  v-bind:id="'first_name'"
-                  v-bind:required="true"
-                  v-bind:title="'{{ trans('people.people_add_firstname') }}'">
+                  :input-type="'text'"
+                  :id="'first_name'"
+                  :required="true"
+                  :title="'{{ trans('people.people_add_firstname') }}'">
                 </form-input>
               </div>
               <div class="dtc">
                 <form-input
                   value=""
-                  v-bind:input-type="'text'"
-                  v-bind:id="'last_name'"
-                  v-bind:required="false"
-                  v-bind:title="'{{ trans('people.people_add_lastname') }}'">
+                  :input-type="'text'"
+                  :id="'last_name'"
+                  :required="false"
+                  :title="'{{ trans('people.people_add_lastname') }}'">
                 </form-input>
               </div>
             </div>
@@ -74,19 +74,19 @@
               <div class="dtc pr2">
                 <form-input
                   value=""
-                  v-bind:input-type="'text'"
-                  v-bind:id="'last_name'"
-                  v-bind:required="false"
-                  v-bind:title="'{{ trans('people.people_add_lastname') }}'">
+                  :input-type="'text'"
+                  :id="'last_name'"
+                  :required="false"
+                  :title="'{{ trans('people.people_add_lastname') }}'">
                 </form-input>
               </div>
               <div class="dtc">
                 <form-input
                   value=""
-                  v-bind:input-type="'text'"
-                  v-bind:id="'first_name'"
-                  v-bind:required="true"
-                  v-bind:title="'{{ trans('people.people_add_firstname') }}'">
+                  :input-type="'text'"
+                  :id="'first_name'"
+                  :required="true"
+                  :title="'{{ trans('people.people_add_firstname') }}'">
                 </form-input>
               </div>
             </div>
@@ -99,26 +99,36 @@
         <div class="pa4-ns ph3 pv2 mb3 mb0-ns bb b--gray-monica">
           <form-select
             :options="{{ $genders }}"
-            v-bind:required="true"
-            v-bind:title="'{{ trans('people.people_add_gender') }}'"
-            v-bind:id="'gender_id'">
+            :required="false"
+            :title="'{{ trans('people.people_add_gender') }}'"
+            :id="'gender_id'"
+            :value="'{{ $defaultGender }}'">
           </form-select>
         </div>
 
         {{-- Birthdate --}}
         <form-specialdate
-          v-bind:months="{{ $months }}"
-          v-bind:days="{{ $days }}"
-          v-bind:default-date="'{{ $birthdate }}'"
-          v-bind:locale="'{{ auth()->user()->locale }}'"
+          :months="{{ $months }}"
+          :days="{{ $days }}"
+          :birthdate="'{{ $birthdate }}'"
         ></form-specialdate>
 
         <div class="pa4-ns ph3 pv2 bb b--gray-monica">
-          <div class="mb3 mb0-ns">
-            <label class="pa0 ma0 lh-copy pointer" for="realContact">
-              <input type="checkbox" id="realContact" name="realContact"> {{ trans('people.relationship_form_also_create_contact') }} <span class="silver">{{ trans('people.relationship_form_add_description') }}</span>
-            </label>
-          </div>
+          {{-- Real or partial contact (default true) --}}
+          <form-checkbox
+            :name="'realContact'"
+            :iclass="'pa0 ma0 lh-copy'"
+            :dclass="'mb3 mb0-ns flex'"
+            value="1"
+            :model-value="true"
+          >
+            <template slot="label">
+              {{ trans('people.relationship_form_also_create_contact') }}
+            </template>
+            <span slot="extra" class="silver">
+              {{ trans('people.relationship_form_add_description') }}
+            </span>
+          </form-checkbox>
         </div>
       </div>
 
@@ -126,18 +136,17 @@
         <div class="pa4-ns ph3 pv2 mb3 mb0-ns bb b--gray-monica">
           @if ($existingContacts->count() == 0)
             <div class="mb1 mt2 tc">
-              <img src="/img/people/no_record_found.svg">
+              <img src="img/people/no_record_found.svg">
               <p>{{ trans('people.relationship_form_add_no_existing_contact', ['name' => $contact->first_name]) }}</p>
             </div>
           @else
             <contact-select
-              v-bind:required="true"
-              v-bind:title="'{{ trans('people.relationship_form_associate_dropdown') }}'"
-              v-bind:name="'existing_contact_id'"
-              v-bind:placeholder="'{{ trans('people.relationship_form_associate_dropdown_placeholder') }}'"
-              v-bind:default-options="{{ $existingContacts }}"
-              v-bind:user-contact-id="'{{ $contact->hashID() }}'"
-              v-bind:inputId="'{{ $contact->hashID() }}'">
+              :required="true"
+              :title="'{{ trans('people.relationship_form_associate_dropdown') }}'"
+              :name="'existing_contact_id'"
+              :placeholder="'{{ trans('people.relationship_form_associate_dropdown_placeholder') }}'"
+              :default-options="{{ \Safe\json_encode($existingContacts) }}"
+              :user-contact-id="'{{ $contact->id }}'">
             </contact-select>
           @endif
         </div>
@@ -148,9 +157,9 @@
         <form-select
           :options="{{ $relationshipTypes }}"
           value="{{ $type }}"
-          v-bind:required="true"
-          v-bind:title="'{{ trans('people.relationship_form_is_with', ['name' => $contact->name]) }}'"
-          v-bind:id="'relationship_type_id'">
+          :required="true"
+          :title="'{{ trans('people.relationship_form_is_with') }}'"
+          :id="'relationship_type_id'">
         </form-select>
       </div>
 
@@ -158,7 +167,7 @@
       <div class="ph4-ns ph3 pv3 bb b--gray-monica">
         <div class="flex-ns justify-between">
           <div>
-            <a href="{{ route('people.show', $contact) }}" class="btn btn-secondary w-auto-ns w-100 mb2 pb0-ns">{{ trans('app.cancel') }}</a>
+            <a href="{{ route('people.show', $contact) }}" class="btn btn-secondary w-auto-ns w-100 mb2 pb0-ns" style="text-align: center;">{{ trans('app.cancel') }}</a>
           </div>
           <div>
             @if ($existingContacts->count() == 0)

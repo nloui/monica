@@ -7,6 +7,7 @@ use App\Models\Contact\Message;
 use App\Models\Contact\Conversation;
 use Illuminate\Database\QueryException;
 use App\Http\Controllers\Api\ApiController;
+use Illuminate\Validation\ValidationException;
 use App\Services\Contact\Conversation\UpdateMessage;
 use App\Services\Contact\Conversation\DestroyMessage;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,8 +19,9 @@ class ApiMessageController extends ApiController
     /**
      * Store the message.
      *
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     *
+     * @return ConversationResource|\Illuminate\Http\JsonResponse
      */
     public function store(Request $request, int $conversationId)
     {
@@ -30,7 +32,7 @@ class ApiMessageController extends ApiController
         }
 
         try {
-            (new AddMessageToConversation)->execute(
+            app(AddMessageToConversation::class)->execute(
                 $request->all()
                 +
                 [
@@ -41,10 +43,8 @@ class ApiMessageController extends ApiController
             );
         } catch (ModelNotFoundException $e) {
             return $this->respondNotFound();
-        } catch (\Exception $e) {
-            return $this->setHTTPStatusCode(500)
-                        ->setErrorCode(41)
-                        ->respondWithError(config('api.error_codes.41'));
+        } catch (ValidationException $e) {
+            return $this->respondValidatorFailed($e->validator);
         } catch (QueryException $e) {
             return $this->respondInvalidQuery();
         }
@@ -55,10 +55,11 @@ class ApiMessageController extends ApiController
     /**
      * Update the message.
      *
-     * @param  Request $request
-     * @param  int $conversationId
-     * @param  int $messageId
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @param int $conversationId
+     * @param int $messageId
+     *
+     * @return ConversationResource|\Illuminate\Http\JsonResponse
      */
     public function update(Request $request, int $conversationId, int $messageId)
     {
@@ -70,7 +71,7 @@ class ApiMessageController extends ApiController
         }
 
         try {
-            (new UpdateMessage)->execute(
+            app(UpdateMessage::class)->execute(
                 $request->all()
                 +
                 [
@@ -82,10 +83,8 @@ class ApiMessageController extends ApiController
             );
         } catch (ModelNotFoundException $e) {
             return $this->respondNotFound();
-        } catch (\Exception $e) {
-            return $this->setHTTPStatusCode(500)
-                        ->setErrorCode(41)
-                        ->respondWithError(config('api.error_codes.41'));
+        } catch (ValidationException $e) {
+            return $this->respondValidatorFailed($e->validator);
         } catch (QueryException $e) {
             return $this->respondInvalidQuery();
         }
@@ -96,10 +95,11 @@ class ApiMessageController extends ApiController
     /**
      * Destroy the message.
      *
-     * @param  Request $request
-     * @param  int $conversationId
-     * @param  int $messageId
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @param int $conversationId
+     * @param int $messageId
+     *
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy(Request $request, int $conversationId, int $messageId)
     {
@@ -111,17 +111,15 @@ class ApiMessageController extends ApiController
         }
 
         try {
-            (new DestroyMessage)->execute([
+            app(DestroyMessage::class)->execute([
                 'account_id' => auth()->user()->account->id,
                 'conversation_id' => $conversationId,
                 'message_id' => $messageId,
             ]);
         } catch (ModelNotFoundException $e) {
             return $this->respondNotFound();
-        } catch (\Exception $e) {
-            return $this->setHTTPStatusCode(500)
-                ->setErrorCode(41)
-                ->respondWithError(config('api.error_codes.41'));
+        } catch (ValidationException $e) {
+            return $this->respondValidatorFailed($e->validator);
         } catch (QueryException $e) {
             return $this->respondInvalidQuery();
         }

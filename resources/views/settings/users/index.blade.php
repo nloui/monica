@@ -8,7 +8,7 @@
   <div class="breadcrumb">
     <div class="{{ Auth::user()->getFluidLayout() }}">
       <div class="row">
-        <div class="col-xs-12">
+        <div class="col-12">
           <ul class="horizontal">
             <li>
               <a href="{{ route('dashboard.index') }}">{{ trans('app.breadcrumb_dashboard') }}</a>
@@ -30,13 +30,13 @@
 
       @include('settings._sidebar')
 
-      <div class="col-xs-12 col-sm-9 users-list">
+      <div class="col-12 col-sm-9 users-list">
 
         <div class="br3 ba b--gray-monica bg-white mb4">
           <div class="pa3 bb b--gray-monica">
             <h3 class="with-actions">
               {{ trans('settings.users_list_title') }}
-              <a href="{{ route('settings.users.add') }}" class="btn">{{ trans('settings.users_list_add_user') }}</a>
+              <a href="{{ route('settings.users.create') }}" class="btn">{{ trans('settings.users_list_add_user') }}</a>
             </h3>
             <ul class="table">
             @foreach ($users as $user)
@@ -54,9 +54,9 @@
                   @endif
                 </div>
 
-                <form method="POST" action="{{ route('settings.users.delete', $user) }}" class="entry-delete-form hidden">
-                  {{ method_field('DELETE') }}
-                  {{ csrf_field() }}
+                <form method="POST" action="{{ route('settings.users.destroy', $user) }}" class="entry-delete-form hidden">
+                  @method('DELETE')
+                  @csrf
                 </form>
               </li>
             @endforeach
@@ -86,8 +86,8 @@
                     </div>
 
                     <form method="POST" action="{{ route('settings.users.invitation.delete', $invitation) }}" class="entry-delete-form hidden">
-                      {{ method_field('DELETE') }}
-                      {{ csrf_field() }}
+                      @method('DELETE')
+                      @csrf
                     </form>
                   </li>
               @endforeach

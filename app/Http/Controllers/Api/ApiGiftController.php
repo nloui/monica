@@ -15,7 +15,7 @@ class ApiGiftController extends ApiController
     /**
      * Get the list of gifts.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
@@ -32,8 +32,10 @@ class ApiGiftController extends ApiController
 
     /**
      * Get the detail of a given gift.
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     *
+     * @param Request $request
+     *
+     * @return GiftResource|\Illuminate\Http\JsonResponse
      */
     public function show(Request $request, $id)
     {
@@ -50,8 +52,10 @@ class ApiGiftController extends ApiController
 
     /**
      * Store the gift.
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     *
+     * @param Request $request
+     *
+     * @return GiftResource|\Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -61,22 +65,24 @@ class ApiGiftController extends ApiController
         }
 
         try {
-            $gift = Gift::create($request->all());
+            $gift = Gift::create(
+                $request->all()
+                + ['account_id' => auth()->user()->account_id]
+            );
         } catch (QueryException $e) {
             return $this->respondNotTheRightParameters();
         }
-
-        $gift->account_id = auth()->user()->account_id;
-        $gift->save();
 
         return new GiftResource($gift);
     }
 
     /**
      * Update the gift.
-     * @param  Request $request
-     * @param  int $giftId
-     * @return \Illuminate\Http\Response
+     *
+     * @param Request $request
+     * @param int $giftId
+     *
+     * @return GiftResource|\Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $giftId)
     {
@@ -111,7 +117,7 @@ class ApiGiftController extends ApiController
      * Validate the request for update.
      *
      * @param  Request $request
-     * @return mixed
+     * @return \Illuminate\Http\JsonResponse|true
      */
     private function validateUpdate(Request $request)
     {
@@ -129,8 +135,7 @@ class ApiGiftController extends ApiController
         ]);
 
         if ($validator->fails()) {
-            return $this->setErrorCode(32)
-                        ->respondWithError($validator->errors()->all());
+            return $this->respondValidatorFailed($validator);
         }
 
         try {
@@ -156,8 +161,10 @@ class ApiGiftController extends ApiController
 
     /**
      * Delete a gift.
-     * @param  Request $request
-     * @return \Illuminate\Http\Response
+     *
+     * @param Request $request
+     *
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy(Request $request, $giftId)
     {
@@ -177,7 +184,7 @@ class ApiGiftController extends ApiController
     /**
      * Get the list of gifts for the given contact.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Http\JsonResponse
      */
     public function gifts(Request $request, $contactId)
     {

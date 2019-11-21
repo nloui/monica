@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contact\Contact;
-use App\Models\Contact\Activity;
+use App\Models\Account\Activity;
 use App\Models\Journal\JournalEntry;
 use App\Http\Requests\People\ActivitiesRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -14,7 +14,8 @@ class ActivitiesController extends Controller
      * Display a listing of the resource.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function index(Contact $contact)
     {
@@ -26,7 +27,8 @@ class ActivitiesController extends Controller
      * Show the form for creating a new resource.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function create(Contact $contact)
     {
@@ -40,7 +42,8 @@ class ActivitiesController extends Controller
      *
      * @param ActivitiesRequest $request
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(ActivitiesRequest $request, Contact $contact)
     {
@@ -72,12 +75,11 @@ class ActivitiesController extends Controller
         // New attendees
         foreach ($specifiedContactsObj as $newContact) {
             $newContact->activities()->attach($activity, ['account_id' => $request->user()->account_id]);
-            $newContact->logEvent('activity', $activity->id, 'create');
             $newContact->calculateActivitiesStatistics();
         }
 
         // Log a journal entry
-        (new JournalEntry)->add($activity);
+        JournalEntry::add($activity);
 
         return redirect()->route('people.show', $contact)
             ->with('success', trans('people.activities_add_success'));
@@ -88,7 +90,8 @@ class ActivitiesController extends Controller
      *
      * @param Contact $contact
      * @param Activity $activity
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function edit(Activity $activity, Contact $contact)
     {
@@ -103,7 +106,8 @@ class ActivitiesController extends Controller
      * @param ActivitiesRequest $request
      * @param Contact $contact
      * @param Activity $activity
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function update(ActivitiesRequest $request, Activity $activity, Contact $contact)
     {
@@ -140,11 +144,6 @@ class ActivitiesController extends Controller
             // Has an existing attendee been removed?
             if (! array_key_exists($existingContact->id, $specifiedContactsObj)) {
                 $existingContact->activities()->detach($activity);
-                $existingContact->logEvent('activity', $activity->id, 'delete');
-            } else {
-                // Otherwise we're updating an activity that someone's
-                // already a part of
-                $existingContact->logEvent('activity', $activity->id, 'update');
             }
 
             // Remove this ID from our list of contacts as we don't
@@ -156,9 +155,13 @@ class ActivitiesController extends Controller
 
         // New attendees
         foreach ($specifiedContactsObj as $newContact) {
-            $newContact->activities()->save($activity);
-            $newContact->logEvent('activity', $activity->id, 'create');
+            $newContact->activities()->attach($activity, ['account_id' => $account->id]);
         }
+
+        // Update the journal entry (in case date has changed)
+        $activity->journalEntry->update([
+            'date' => $activity->date_it_happened,
+        ]);
 
         return redirect()->route('people.show', $contact)
             ->with('success', trans('people.activities_update_success'));
@@ -169,14 +172,14 @@ class ActivitiesController extends Controller
      *
      * @param Contact $contact
      * @param Activity $activity
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Activity $activity, Contact $contact)
     {
         $activity->deleteJournalEntry();
 
         foreach ($activity->contacts as $contactActivity) {
-            $contactActivity->events()->forObject($activity)->get()->each->delete();
             $contactActivity->calculateActivitiesStatistics();
         }
 

@@ -2,10 +2,19 @@
 
 namespace App\Console\Commands;
 
+use function Safe\fopen;
 use App\Models\User\User;
+use function Safe\fclose;
+use App\Helpers\DateHelper;
 use App\Models\Contact\Gender;
+use App\Models\Contact\Address;
 use App\Models\Contact\Contact;
 use Illuminate\Console\Command;
+use App\Models\Contact\ContactField;
+use App\Models\Contact\ContactFieldType;
+use App\Jobs\Avatars\GetAvatarsFromInternet;
+use App\Services\Contact\Address\CreateAddress;
+use App\Services\Contact\Reminder\CreateReminder;
 
 class ImportCSV extends Command
 {
@@ -24,6 +33,20 @@ class ImportCSV extends Command
     protected $description = 'Imports CSV in Google format to user account';
 
     /**
+     * The contact field email object.
+     *
+     * @var array
+     */
+    public $contactFieldEmailId;
+
+    /**
+     * The contact field phone object.
+     *
+     * @var array
+     */
+    public $contactFieldPhoneId;
+
+    /**
      * Execute the console command.
      *
      * @return mixed
@@ -32,7 +55,7 @@ class ImportCSV extends Command
     {
         $file = $this->argument('file');
 
-        if (is_int($this->argument('user'))) {
+        if (is_numeric($this->argument('user'))) {
             $user = User::find($this->argument('user'));
         } else {
             $user = User::where('email', $this->argument('user'))->first();
@@ -50,42 +73,43 @@ class ImportCSV extends Command
             return -1;
         }
 
-        $this->info("Importing CSV file $file to user {$user->id}");
+        if (is_string($file)) {
+            $this->info("Importing CSV file {$file} to user {$user->id}");
+        }
 
         // create special gender for this import
         // we don't know which gender all the contacts are, so we need to create a special status for them, as we
         // can't guess whether they are men, women or else.
-        $gender = Gender::where('name', 'vCard')->first();
+        $gender = Gender::where('name', config('dav.default_gender'))->first();
         if (! $gender) {
             $gender = new Gender;
             $gender->account_id = $user->account_id;
-            $gender->name = 'vCard';
+            $gender->name = config('dav.default_gender');
             $gender->save();
         }
 
         $first = true;
         $imported = 0;
-        if (($handle = fopen($file, 'r')) !== false) {
-            try {
-                while (($data = fgetcsv($handle)) !== false) {
-                    // don't import the columns
-                    if ($first) {
-                        $first = false;
-                        continue;
-                    }
-
-                    // if first & last name do not exist skip row
-                    if (empty($data[1]) && empty($data[3])) {
-                        continue;
-                    }
-
-                    $this->csvToContact($data, $user->account_id, $gender->id);
-
-                    $imported++;
+        try {
+            $handle = fopen($file, 'r');
+            while (($data = fgetcsv($handle)) !== false) {
+                // don't import the columns
+                if ($first) {
+                    $first = false;
+                    continue;
                 }
-            } finally {
-                fclose($handle);
+
+                // if first & last name do not exist skip row
+                if (empty($data[1]) && empty($data[3])) {
+                    continue;
+                }
+
+                $this->csvToContact($data, $user->account_id, $gender->id);
+
+                $imported++;
             }
+        } finally {
+            fclose($handle);
         }
 
         $this->info("Imported {$imported} Contacts");
@@ -112,49 +136,115 @@ class ImportCSV extends Command
             $contact->last_name = $data[3];     // Family Name
         }
 
-        if (! empty($data[28])) {
-            $contact->email = $data[28];        // Email 1 Value
-        }
-
-        if (! empty($data[42])) {
-            $contact->phone_number = $data[42]; // Phone 1 Value
-        }
-
+        $street = null;
         if (! empty($data[49])) {
-            $contact->street = $data[49];       // address 1 street
+            $street = $data[49];       // address 1 street
         }
 
+        $city = null;
         if (! empty($data[50])) {
-            $contact->city = $data[50];         // address 1 city
-        }
-        if (! empty($data[52])) {
-            $contact->province = $data[52];     // address 1 region (state)
+            $city = $data[50];         // address 1 city
         }
 
-        if (! empty($data[53])) {
-            $contact->postal_code = $data[53];  // address 1 postal code (zip) 53
+        $province = null;
+        if (! empty($data[52])) {
+            $province = $data[52];     // address 1 region (state)
         }
+
+        $postalCode = null;
+        if (! empty($data[53])) {
+            $postalCode = $data[53];  // address 1 postal code (zip) 53
+        }
+
         if (! empty($data[66])) {
             $contact->job = $data[66];          // organization 1 name 66
-        }
-
-        // can't have empty email
-        if (empty($contact->email)) {
-            $contact->email = null;
         }
 
         $contact->setAvatarColor();
         $contact->save();
 
-        if (! empty($data[14])) {
-            $birthdate = new \DateTime(strtotime($data[14]));
-
-            $specialDate = $contact->setSpecialDate('birthdate', $birthdate->format('Y'), $birthdate->format('m'), $birthdate->format('d'));
-            $specialDate->setReminder('year', 1, trans('people.people_add_birthday_reminder', ['name' => $contact->first_name]));
+        if (! empty($data[28])) {
+            // Email 1 Value
+            ContactField::firstOrCreate([
+                'account_id' => $contact->account_id,
+                'contact_id' => $contact->id,
+                'data' => $data[28],
+                'contact_field_type_id' => $this->contactFieldEmailId(),
+            ]);
         }
 
-        $contact->updateGravatar();
+        if ($postalCode || $province || $street || $city) {
+            $request = [
+                'account_id' => $contact->account_id,
+                'contact_id' => $contact->id,
+                'street' => $street,
+                'city' => $city,
+                'province' => $province,
+                'postal_code' => $postalCode,
+            ];
 
-        $contact->logEvent('contact', $contact->id, 'create');
+            app(CreateAddress::class)->execute($request);
+        }
+
+        if (! empty($data[42])) {
+            // Phone 1 Value
+            ContactField::firstOrCreate([
+                'account_id' => $contact->account_id,
+                'contact_id' => $contact->id,
+                'data' => $data[42],
+                'contact_field_type_id' => $this->contactFieldPhoneId(),
+            ]);
+        }
+
+        if (! empty($data[14])) {
+            $birthdate = DateHelper::parseDate($data[14]);
+
+            $specialDate = $contact->setSpecialDate('birthdate', $birthdate->year, $birthdate->month, $birthdate->day);
+
+            app(CreateReminder::class)->execute([
+                'account_id' => $contact->account_id,
+                'contact_id' => $contact->id,
+                'initial_date' => $specialDate->date->toDateString(),
+                'frequency_type' => 'year',
+                'frequency_number' => 1,
+                'title' => trans(
+                    'people.people_add_birthday_reminder',
+                    ['name' => $contact->first_name]
+                ),
+                'delible' => false,
+            ]);
+        }
+
+        GetAvatarsFromInternet::dispatch($contact);
+    }
+
+    /**
+     * Get the default contact field email id for the account.
+     *
+     * @return int
+     */
+    private function contactFieldEmailId()
+    {
+        if (! $this->contactFieldEmailId) {
+            $contactFieldType = ContactFieldType::where('type', 'email')->first();
+            $this->contactFieldEmailId = $contactFieldType->id;
+        }
+
+        return $this->contactFieldEmailId;
+    }
+
+    /**
+     * Get the default contact field phone id for the account.
+     *
+     * @return int
+     */
+    private function contactFieldPhoneId()
+    {
+        if (! $this->contactFieldPhoneId) {
+            $contactFieldType = ContactFieldType::where('type', 'phone')->first();
+            $this->contactFieldPhoneId = $contactFieldType->id;
+        }
+
+        return $this->contactFieldPhoneId;
     }
 }

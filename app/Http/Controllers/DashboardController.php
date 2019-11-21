@@ -6,7 +6,8 @@ use App\Models\User\User;
 use App\Helpers\DateHelper;
 use App\Models\Contact\Debt;
 use Illuminate\Http\Request;
-use App\Models\Contact\Contact;
+use function Safe\json_encode;
+use App\Helpers\InstanceHelper;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\Debt\Debt as DebtResource;
@@ -16,7 +17,7 @@ class DashboardController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\View\View|\Illuminate\Contracts\View\Factory
      */
     public function index()
     {
@@ -26,18 +27,24 @@ class DashboardController extends Controller
             )->with('debts.contact')
             ->first();
 
-        if ($account->contacts()->count() === 0) {
+        if ($account->contacts()->real()->active()->count() === 0) {
             return view('dashboard.blank');
         }
 
         // Fetch last updated contacts
         $lastUpdatedContactsCollection = collect([]);
-        $lastUpdatedContacts = $account->contacts()->where('is_partial', false)->latest('updated_at')->limit(10)->get();
+        $lastUpdatedContacts = $account->contacts()
+            ->real()
+            ->active()
+            ->alive()
+            ->latest('last_consulted_at')
+            ->limit(10)
+            ->get();
         foreach ($lastUpdatedContacts as $contact) {
             $data = [
                 'id' => $contact->hashID(),
                 'has_avatar' => $contact->has_avatar,
-                'avatar_url' => $contact->getAvatarURL(110),
+                'avatar_url' => $contact->getAvatarURL(),
                 'initials' => $contact->getInitials(),
                 'default_avatar_color' => $contact->default_avatar_color,
                 'complete_name' => $contact->name,
@@ -57,9 +64,19 @@ class DashboardController extends Controller
                 return $totalOwedDebt + $debt->amount;
             }, 0);
 
+        // get last 3 changelog entries
+        $changelogs = InstanceHelper::getChangelogEntries(3);
+
+        // Load the reminderOutboxes for the upcoming three months
+        $reminderOutboxes = [
+            0 => auth()->user()->account->getRemindersForMonth(0),
+            1 => auth()->user()->account->getRemindersForMonth(1),
+            2 => auth()->user()->account->getRemindersForMonth(2),
+        ];
+
         $data = [
             'lastUpdatedContacts' => $lastUpdatedContactsCollection,
-            'number_of_contacts' => $account->contacts()->real()->count(),
+            'number_of_contacts' => $account->contacts()->real()->active()->count(),
             'number_of_reminders' => $account->reminders_count,
             'number_of_notes' => $account->notes_count,
             'number_of_activities' => $account->activities_count,
@@ -69,6 +86,8 @@ class DashboardController extends Controller
             'debt_owed' => $debt_owed,
             'debts' => $debt,
             'user' => auth()->user(),
+            'changelogs' => $changelogs,
+            'reminderOutboxes' => $reminderOutboxes,
         ];
 
         return view('dashboard.index', $data);
@@ -81,7 +100,12 @@ class DashboardController extends Controller
     public function calls()
     {
         $callsCollection = collect([]);
-        $calls = auth()->user()->account->calls()->limit(15)->get();
+        $calls = auth()->user()->account->calls()
+            ->get()
+            ->reject(function ($call) {
+                return is_null($call->contact);
+            })
+            ->take(15);
 
         foreach ($calls as $call) {
             $data = [
@@ -114,7 +138,7 @@ class DashboardController extends Controller
                 'contact' => [
                     'id' => $note->contact->hashID(),
                     'has_avatar' => $note->contact->has_avatar,
-                    'avatar_url' => $note->contact->getAvatarURL(110),
+                    'avatar_url' => $note->contact->getAvatarURL(),
                     'initials' => $note->contact->getInitials(),
                     'default_avatar_color' => $note->contact->default_avatar_color,
                     'complete_name' => $note->contact->name,

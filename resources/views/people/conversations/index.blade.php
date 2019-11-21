@@ -1,9 +1,9 @@
-<div class="col-xs-12 {{ \App\Helpers\LocaleHelper::getDirection() }}">
+<div class="col-12 {{ \App\Helpers\LocaleHelper::getDirection() }}">
   <h3>
     🗣 {{ trans('people.conversation_list_title') }}
 
     <span class="relative {{ \App\Helpers\LocaleHelper::getDirection() == 'ltr' ? 'fr' : 'fl' }}" style="top: -7px;">
-      <a href="{{ route('people.conversation.new', $contact) }}" class="btn edit-information">{{ trans('people.conversation_list_cta') }}</a>
+      <a href="{{ route('people.conversations.create', $contact) }}" class="btn edit-information">{{ trans('people.conversation_list_cta') }}</a>
     </span>
   </h3>
 </div>
@@ -18,10 +18,10 @@
 
 @else
 
-<div class="col-xs-12" cy-name="conversation-blank-state">
+<div class="col-12" cy-name="conversation-blank-state">
     <div class="section-blank">
       <h3>{{ trans('people.conversation_blank', ['name' => $contact->first_name]) }}</h3>
-      <a href="{{ route('people.conversation.new', $contact) }}" cy-name="add-conversation-button">{{ trans('people.conversation_list_cta') }}</a>
+      <a href="{{ route('people.conversations.create', $contact) }}" cy-name="add-conversation-button">{{ trans('people.conversation_list_cta') }}</a>
     </div>
 </div>
 

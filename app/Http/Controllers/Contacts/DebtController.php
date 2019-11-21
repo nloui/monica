@@ -13,7 +13,8 @@ class DebtController extends Controller
      * Display a listing of the resource.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function index(Contact $contact)
     {
@@ -25,7 +26,8 @@ class DebtController extends Controller
      * Show the form for creating a new resource.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function create(Contact $contact)
     {
@@ -39,11 +41,12 @@ class DebtController extends Controller
      *
      * @param DebtRequest $request
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(DebtRequest $request, Contact $contact)
     {
-        $debt = $contact->debts()->create(
+        $contact->debts()->create(
             $request->only([
                 'in_debt',
                 'amount',
@@ -55,8 +58,6 @@ class DebtController extends Controller
             ]
         );
 
-        $contact->logEvent('debt', $debt->id, 'create');
-
         return redirect()->route('people.show', $contact)
             ->with('success', trans('people.debt_add_success'));
     }
@@ -66,9 +67,10 @@ class DebtController extends Controller
      *
      * @param Contact $contact
      * @param Debt $debt
-     * @return \Illuminate\Http\Response
+     *
+     * @return void
      */
-    public function show(Contact $contact, Debt $debt)
+    public function show(Contact $contact, Debt $debt): void
     {
         //
     }
@@ -78,7 +80,8 @@ class DebtController extends Controller
      *
      * @param Contact $contact
      * @param Debt $debt
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function edit(Contact $contact, Debt $debt)
     {
@@ -93,7 +96,8 @@ class DebtController extends Controller
      * @param DebtRequest $request
      * @param Contact $contact
      * @param Debt $debt
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function update(DebtRequest $request, Contact $contact, Debt $debt)
     {
@@ -109,8 +113,6 @@ class DebtController extends Controller
             ]
         );
 
-        $contact->logEvent('debt', $debt->id, 'update');
-
         return redirect()->route('people.show', $contact)
             ->with('success', trans('people.debt_edit_success'));
     }
@@ -120,13 +122,12 @@ class DebtController extends Controller
      *
      * @param Contact $contact
      * @param Debt $debt
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Contact $contact, Debt $debt)
     {
         $debt->delete();
-
-        $contact->events()->forObject($debt)->get()->each->delete();
 
         return redirect()->route('people.show', $contact)
             ->with('success', trans('people.debt_delete_success'));

@@ -15,9 +15,10 @@ class GiftsController extends Controller
      * List all the gifts for the given contact.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Support\Collection
      */
-    public function get(Contact $contact)
+    public function index(Contact $contact)
     {
         $giftsCollection = collect([]);
         $gifts = $contact->gifts()->get();
@@ -57,7 +58,7 @@ class GiftsController extends Controller
      * Mark a gift as being offered.
      * @param  Contact $contact
      * @param  Gift    $gift
-     * @return void
+     * @return Gift
      */
     public function toggle(Contact $contact, Gift $gift)
     {
@@ -70,7 +71,8 @@ class GiftsController extends Controller
      * Show the form for creating a new resource.
      *
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function create(Contact $contact)
     {
@@ -87,7 +89,8 @@ class GiftsController extends Controller
      *
      * @param GiftsRequest $request
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(GiftsRequest $request, Contact $contact)
     {
@@ -102,7 +105,8 @@ class GiftsController extends Controller
      *
      * @param Contact $contact
      * @param Gift $gift
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\View\View
      */
     public function edit(Contact $contact, Gift $gift)
     {
@@ -120,7 +124,8 @@ class GiftsController extends Controller
      * @param GiftsRequest $request
      * @param Contact $contact
      * @param Gift $gift
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function update(GiftsRequest $request, Contact $contact, Gift $gift)
     {
@@ -135,12 +140,12 @@ class GiftsController extends Controller
      *
      * @param Contact $contact
      * @param Gift $gift
-     * @return \Illuminate\Http\Response
+     *
+     * @return void
      */
-    public function destroy(Contact $contact, Gift $gift)
+    public function destroy(Contact $contact, Gift $gift): void
     {
         $gift->delete();
-        $contact->events()->forObject($gift)->get()->each->delete();
     }
 
     /**
@@ -148,7 +153,8 @@ class GiftsController extends Controller
      *
      * @param GiftsRequest $request
      * @param Contact $contact
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Database\Eloquent\Model
      */
     public function updateOrCreate(GiftsRequest $request, Contact $contact, Gift $gift = null)
     {
@@ -178,8 +184,6 @@ class GiftsController extends Controller
             $gift->recipient = $request->get('recipient');
             $gift->save();
         }
-
-        $contact->logEvent('gift', $gift->id, 'create');
 
         return $gift;
     }

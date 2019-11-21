@@ -24,14 +24,16 @@ class EmailChangeController extends Controller
     /**
      * Show the application's login form.
      *
-     * @param  \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
      */
     public function showLoginFormSpecial(Request $request)
     {
-        if ($request->session()->has('user_id')) {
-            $user = User::findOrFail($request->session()->get('user_id'));
-
+        $user = $request->user();
+        if ($user &&
+            $user instanceof User &&
+            ! $user->hasVerifiedEmail()) {
             return view('auth.emailchange1')
                 ->with('email', $user->email);
         }
@@ -42,10 +44,11 @@ class EmailChangeController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @param  \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param \Illuminate\Http\Request $request
+     *
+     * @return \Illuminate\View\View
      */
-    public function index(Request $request)
+    public function index(Request $request): \Illuminate\View\View
     {
         $user = auth()->user();
 
@@ -57,7 +60,7 @@ class EmailChangeController extends Controller
      * Change user email.
      *
      * @param EmailChangeRequest $request
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function save(EmailChangeRequest $request)
     {
@@ -78,7 +81,7 @@ class EmailChangeController extends Controller
     {
         $user = $request->user();
 
-        (new EmailChange)->execute([
+        app(EmailChange::class)->execute([
             'account_id' => $user->account_id,
             'email' => $request->get('newmail'),
             'user_id' => $user->id,
@@ -95,7 +98,8 @@ class EmailChangeController extends Controller
      * Get the response for a successful password changed.
      *
      * @param string $response
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     protected function sendChangedResponse($response)
     {
@@ -107,7 +111,8 @@ class EmailChangeController extends Controller
      * Get the response for a failed password.
      *
      * @param string $response
-     * @return \Illuminate\Http\Response
+     *
+     * @return \Illuminate\Http\RedirectResponse
      */
     protected function sendChangedFailedResponse($response)
     {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Helpers\DBHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Migrations\Migration;
 
@@ -15,14 +16,14 @@ class AddMultipleGendersChoices extends Migration
         $driverName = DB::connection()->getDriverName();
         switch ($driverName) {
             case 'mysql':
-                DB::statement("ALTER TABLE contacts CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
-                DB::statement("ALTER TABLE significant_others CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
-                DB::statement("ALTER TABLE kids CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
+                DB::statement('ALTER TABLE '.DBHelper::getTable('contacts')." CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
+                DB::statement('ALTER TABLE '.DBHelper::getTable('significant_others')." CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
+                DB::statement('ALTER TABLE '.DBHelper::getTable('kids')." CHANGE COLUMN gender gender ENUM('male', 'female', 'none')");
                 break;
             case 'pgsql':
-                $this->alterEnum('contacts', 'gender', ['male', 'female', 'none']);
-                $this->alterEnum('significant_others', 'gender', ['male', 'female', 'none']);
-                $this->alterEnum('kids', 'gender', ['male', 'female', 'none']);
+                $this->alterEnum(DBHelper::getTable('contacts'), 'gender', ['male', 'female', 'none']);
+                $this->alterEnum(DBHelper::getTable('significant_others'), 'gender', ['male', 'female', 'none']);
+                $this->alterEnum(DBHelper::getTable('kids'), 'gender', ['male', 'female', 'none']);
                 break;
             default:
                 throw new \Exception("Driver {$driverName} not supported.");

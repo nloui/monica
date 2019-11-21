@@ -7,7 +7,7 @@
     <div class="breadcrumb">
       <div class="{{ Auth::user()->getFluidLayout() }}">
         <div class="row">
-          <div class="col-xs-12">
+          <div class="col-12">
             <ul class="horizontal">
               <li>
                 <a href="{{ route('dashboard.index') }}">{{ trans('app.breadcrumb_dashboard') }}</a>
@@ -31,11 +31,11 @@
     <div class="main-content central-form">
       <div class="{{ Auth::user()->getFluidLayout() }}">
         <div class="row">
-          <div class="col-xs-12 col-sm-6 col-sm-offset-3 col-sm-offset-3-right">
+          <div class="col-12 col-sm-6 offset-sm-3 offset-sm-3-right">
             <h2>{{ trans('people.introductions_title_edit', ['name' => $contact->first_name]) }}</h2>
 
               <form method="POST" action="{{ route('people.introductions.update', $contact) }}">
-                {{ csrf_field() }}
+                @csrf
 
                 @include('partials.errors')
 
@@ -49,7 +49,7 @@
                   <label for="metThroughId">{{ trans('people.introductions_edit_met_through') }}</label>
                   <select class="form-control" name="metThroughId" id="metThroughId">
                     <option value="">{{ trans('people.introductions_no_met_through') }}</option>
-                    @foreach (auth()->user()->account->contacts()->real()->get() as $metThroughContact)
+                    @foreach (auth()->user()->account->contacts()->real()->active()->get() as $metThroughContact)
 
                       @if ($metThroughContact->id != $contact->id)
                       <option value="{{ $metThroughContact->id }}" {{ (is_null($contact->first_met_through_contact_id)) ? '' : (($metThroughContact->id == $contact->first_met_through_contact_id) ? 'selected' : '') }}>
@@ -92,10 +92,13 @@
                 </fieldset>
 
                 <fieldset class="form-group" v-if="date_met_the_contact == 'known'">
-                  <label class="form-check-inline real-contact-checkbox" for="addReminder">
-                    <input type="checkbox" class="form-check-input" name="addReminder" id="addReminder">
+                  <form-checkbox
+                    :name="'addReminder'"
+                    :dclass="'form-check form-check-label'"
+                    :iclass="'form-check-input'"
+                  >
                     {{ trans('people.introductions_add_reminder') }}
-                  </label>
+                  </form-checkbox>
                 </fieldset>
 
                 <div class="form-group actions">

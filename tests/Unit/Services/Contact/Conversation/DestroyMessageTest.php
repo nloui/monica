@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Contact\Conversation;
 use Tests\TestCase;
 use App\Models\Contact\Message;
 use App\Models\Contact\Conversation;
+use Illuminate\Validation\ValidationException;
 use App\Services\Contact\Conversation\DestroyMessage;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -36,8 +37,7 @@ class DestroyMessageTest extends TestCase
             'id' => $message->id,
         ]);
 
-        $messageService = new DestroyMessage;
-        $bool = $messageService->execute($request);
+        app(DestroyMessage::class)->execute($request);
 
         $this->assertDatabaseMissing('messages', [
             'id' => $message->id,
@@ -47,30 +47,28 @@ class DestroyMessageTest extends TestCase
     public function test_it_fails_if_wrong_parameters_are_given()
     {
         $request = [
-            'account_id' => 1,
             'conversation_id' => 2,
             'message_id' => 3,
         ];
 
-        $this->expectException(\Exception::class);
+        $this->expectException(ValidationException::class);
 
-        $destroyMessage = new DestroyMessage;
-        $result = $destroyMessage->execute($request);
+        app(DestroyMessage::class)->execute($request);
     }
 
     public function test_it_throws_an_exception_if_message_doesnt_exist()
     {
         $conversation = factory(Conversation::class)->create([]);
+        $message = factory(Message::class)->create([]);
 
         $request = [
-            'account_id' => 231,
+            'account_id' => $conversation->account->id,
             'conversation_id' => $conversation->id,
-            'message_id' => 1293,
+            'message_id' => $message->id,
         ];
 
         $this->expectException(ModelNotFoundException::class);
 
-        $destroyMessage = new DestroyMessage;
-        $message = $destroyMessage->execute($request);
+        app(DestroyMessage::class)->execute($request);
     }
 }

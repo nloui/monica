@@ -3,6 +3,7 @@
 namespace Tests\Unit\Helpers;
 
 use Tests\TestCase;
+use function Safe\json_decode;
 use App\Helpers\InstanceHelper;
 use App\Models\Account\Account;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -50,7 +51,7 @@ class InstanceHelperTest extends TestCase
         );
 
         $this->assertEquals(
-            10,
+            '$10.00',
             InstanceHelper::getPlanInformationFromConfig('monthly')['friendlyPrice']
         );
     }
@@ -82,7 +83,7 @@ class InstanceHelperTest extends TestCase
         );
 
         $this->assertEquals(
-            10,
+            '$10.00',
             InstanceHelper::getPlanInformationFromConfig('annual')['friendlyPrice']
         );
     }
@@ -93,6 +94,23 @@ class InstanceHelperTest extends TestCase
 
         $this->assertNull(
             InstanceHelper::getPlanInformationFromConfig('unknown_plan')
+        );
+    }
+
+    public function test_it_gets_latest_changelog_entries()
+    {
+        $json = public_path('changelog.json');
+        $changelogs = json_decode(file_get_contents($json), true)['entries'];
+        $count = count($changelogs);
+
+        $this->assertCount(
+            $count,
+            InstanceHelper::getChangelogEntries()
+        );
+
+        $this->assertCount(
+            3,
+            InstanceHelper::getChangelogEntries(3)
         );
     }
 }

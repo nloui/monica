@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Auth;
 use App\Models\User\User;
 use Illuminate\Http\Request;
 use App\Helpers\LocaleHelper;
+use App\Helpers\RequestHelper;
 use App\Jobs\SendNewUserAlert;
 use App\Models\Account\Account;
-use App\Helpers\CollectionHelper;
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Bestmomo\LaravelEmailConfirmation\Traits\RegistersUsers;
+use Illuminate\Foundation\Auth\RegistersUsers;
 
 class RegisterController extends Controller
 {
@@ -48,7 +47,7 @@ class RegisterController extends Controller
     /**
      * Show the application registration form.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\View\View
      */
     public function showRegistrationForm(Request $request)
     {
@@ -59,7 +58,7 @@ class RegisterController extends Controller
 
         return view('auth.register')
             ->withFirst($first)
-            ->withLocales(CollectionHelper::sortByCollator(LocaleHelper::getLocaleList(), 'lang'));
+            ->withLocales(LocaleHelper::getLocaleList()->sortByCollator('lang'));
     }
 
     /**
@@ -82,18 +81,22 @@ class RegisterController extends Controller
     /**
      * Create a new user instance after a valid registration.
      *
-     * @param  array
+     * @param  array $data
      * @return User
      */
     protected function create(array $data)
     {
         $first = ! Account::hasAny();
+        if (config('monica.disable_signup') == 'true' && ! $first) {
+            abort(403, trans('auth.signup_disabled'));
+        }
+
         $account = Account::createDefault(
             $data['first_name'],
             $data['last_name'],
             $data['email'],
             $data['password'],
-            \Request::ip(),
+            RequestHelper::ip(),
             $data['lang']
         );
         $user = $account->users()->first();
@@ -111,20 +114,14 @@ class RegisterController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  mixed  $user
-     * @return mixed
      */
     protected function registered(Request $request, $user)
     {
-        $first = Account::count() == 1;
-        if (! config('monica.signup_double_optin') || $first) {
+        /** @var int $count */
+        $count = Account::count();
+        if (! config('monica.signup_double_optin') || $count == 1) {
             // if signup_double_optin is disabled, skip the confirm email part
-            $user->confirmation_code = null;
-            $user->confirmed = true;
-            $user->save();
-
-            $this->guard()->login($user);
-
-            return redirect()->route('login');
+            $user->markEmailAsVerified();
         }
     }
 }

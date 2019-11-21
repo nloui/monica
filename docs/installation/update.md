@@ -7,7 +7,7 @@ steps below to update it, **every single time**, or you will run into problems.
 
 1. Always make a backup of your data before upgrading.
 1. Check that your backup is valid.
-1. Read the [release notes](https://github.com/monicahq/monica/blob/master/CHANGELOG) to check for breaking changes.
+1. Read the [release notes](https://github.com/monicahq/monica/blob/master/CHANGELOG.md) to check for breaking changes.
 1. Update sources:
     1. Consider check out a tagged version of Monica since `master` branch may not always be stable.
        Find the latest official version on the [release page](https://github.com/monicahq/monica/releases)
@@ -32,6 +32,12 @@ As the configuration of the application is cached, any update on the `.env` file
 
 
 Your instance should be updated.
+
+## Updating Heroku instance
+
+You can update your Monica instance to the latest version by cloning the repository and pushing it to Heroku git.
+
+Clone the Monica repository to your local environment by git clone https://github.com/monicahq/monica, and add heroku git repository by heroku git:remote -a (heroku app name). Then, push to heroku by git push heroku master. Heroku will build and update the repository, automatically.
 
 ## Importing vCards (CLI only)
 

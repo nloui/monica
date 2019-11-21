@@ -4,10 +4,14 @@
 
 <section class="ph3 ph0-ns">
   <div class="mt4 mw7 center mb3">
-    <h3 class="f3 fw5">{{ trans('people.people_add_title') }}</h3>
+    @if ($isContactMissing)
+      <h2 class="f2 fw5">{{ trans('people.people_add_missing') }}</h2>
+    @else
+      <h2 class="f3 fw5">{{ trans('people.people_add_title') }}</h2>
+    @endif
 
     @if (! auth()->user()->account->hasLimitations())
-      <p class="import">{!! trans('people.people_add_import', ['url' => '/settings/import']) !!}</p>
+      <p class="import">{!! trans('people.people_add_import', ['url' => route('settings.import')]) !!}</p>
     @endif
   </div>
 
@@ -22,7 +26,7 @@
     @include('partials.errors')
 
     <form action="{{ route('people.store') }}" method="POST">
-      {{ csrf_field() }}
+      @csrf
 
       <div class="pa4-ns ph3 pv2 bb b--gray-monica">
         {{-- This check is for the cultures that are used to say the last name first --}}
@@ -30,28 +34,28 @@
 
         <div class="mb3">
           <form-input
-            v-bind:id="'first_name'"
-            v-bind:input-type="'text'"
-            v-bind:required="true"
-            v-bind:title="'{{ trans('people.people_add_firstname') }}'">
+            :id="'first_name'"
+            :input-type="'text'"
+            :required="true"
+            :title="'{{ trans('people.people_add_firstname') }}'">
           </form-input>
         </div>
 
         <div class="mb3">
           <form-input
-            v-bind:id="'last_name'"
-            v-bind:input-type="'text'"
-            v-bind:required="false"
-            v-bind:title="'{{ trans('people.people_add_lastname') }}'">
+            :id="'last_name'"
+            :input-type="'text'"
+            :required="false"
+            :title="'{{ trans('people.people_add_lastname') }}'">
           </form-input>
         </div>
 
         <div class="mb3 mb0-ns">
           <form-input
-            v-bind:id="'nickname'"
-            v-bind:input-type="'text'"
-            v-bind:required="false"
-            v-bind:title="'{{ trans('people.people_add_nickname') }}'">
+            :id="'nickname'"
+            :input-type="'text'"
+            :required="false"
+            :title="'{{ trans('people.people_add_nickname') }}'">
           </form-input>
         </div>
 
@@ -59,28 +63,28 @@
 
         <div class="mb3">
           <form-input
-            v-bind:id="'last_name'"
-            v-bind:input-type="'text'"
-            v-bind:required="false"
-            v-bind:title="'{{ trans('people.people_add_lastname') }}'">
+            :id="'last_name'"
+            :input-type="'text'"
+            :required="false"
+            :title="'{{ trans('people.people_add_lastname') }}'">
           </form-input>
         </div>
 
         <div class="mb3">
           <form-input
-            v-bind:id="'first_name'"
-            v-bind:input-type="'text'"
-            v-bind:required="true"
-            v-bind:title="'{{ trans('people.people_add_firstname') }}'">
+            :id="'first_name'"
+            :input-type="'text'"
+            :required="true"
+            :title="'{{ trans('people.people_add_firstname') }}'">
           </form-input>
         </div>
 
         <div class="mb3 mb0-ns">
           <form-input
-            v-bind:id="'nickname'"
-            v-bind:input-type="'text'"
-            v-bind:required="false"
-            v-bind:title="'{{ trans('people.people_add_nickname') }}'">
+            :id="'nickname'"
+            :input-type="'text'"
+            :required="false"
+            :title="'{{ trans('people.people_add_nickname') }}'">
           </form-input>
         </div>
 
@@ -90,9 +94,10 @@
       <div class="pa4-ns ph3 pv2 mb3 mb0-ns bb b--gray-monica">
         <form-select
           :options="{{ $genders }}"
-          v-bind:required="true"
-          v-bind:title="'{{ trans('people.people_add_gender') }}'"
-          v-bind:id="'gender'">
+          :required="false"
+          :title="'{{ trans('people.people_add_gender') }}'"
+          :id="'gender'"
+          :value="'{{ $defaultGender }}'">
         </form-select>
       </div>
 

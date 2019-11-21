@@ -3,8 +3,10 @@
 namespace Tests\Unit\Services\Contact\Conversation;
 
 use Tests\TestCase;
+use App\Models\Account\Account;
 use App\Models\Contact\Message;
 use App\Models\Contact\Conversation;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Contact\Conversation\DestroyConversation;
@@ -28,8 +30,7 @@ class DestroyConversationTest extends TestCase
             'id' => $conversation->id,
         ]);
 
-        $conversationService = new DestroyConversation;
-        $bool = $conversationService->execute($request);
+        app(DestroyConversation::class)->execute($request);
 
         $this->assertDatabaseMissing('conversations', [
             'id' => $conversation->id,
@@ -60,8 +61,7 @@ class DestroyConversationTest extends TestCase
             'conversation_id' => $conversation->id,
         ];
 
-        $conversationService = new DestroyConversation;
-        $bool = $conversationService->execute($request);
+        app(DestroyConversation::class)->execute($request);
 
         $this->assertDatabaseMissing('messages', [
             'id' => $message->id,
@@ -78,24 +78,23 @@ class DestroyConversationTest extends TestCase
             'account_id' => $conversation->account->id,
         ];
 
-        $this->expectException(\Exception::class);
+        $this->expectException(ValidationException::class);
 
-        $conversationService = new DestroyConversation;
-        $bool = $conversationService->execute($request);
+        app(DestroyConversation::class)->execute($request);
     }
 
     public function test_it_throws_an_exception_if_conversation_doesnt_exist()
     {
+        $account = factory(Account::class)->create();
         $conversation = factory(Conversation::class)->create([]);
 
         $request = [
-            'account_id' => 231,
+            'account_id' => $account->id,
             'conversation_id' => $conversation->id,
         ];
 
         $this->expectException(ModelNotFoundException::class);
 
-        $destroyConversation = new DestroyConversation;
-        $conversation = $destroyConversation->execute($request);
+        app(DestroyConversation::class)->execute($request);
     }
 }

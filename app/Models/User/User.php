@@ -7,20 +7,24 @@ use App\Helpers\DateHelper;
 use App\Models\Journal\Day;
 use App\Models\Settings\Term;
 use App\Models\Account\Account;
-use App\Models\Contact\Reminder;
+use App\Models\Contact\Contact;
 use App\Models\Settings\Currency;
 use Illuminate\Support\Facades\DB;
 use Laravel\Passport\HasApiTokens;
-use Illuminate\Support\Facades\App;
-use App\Jobs\Reminder\SendReminderEmail;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Http\Resources\Account\User\User as UserResource;
+use Illuminate\Contracts\Translation\HasLocalePreference;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Http\Resources\Settings\Compliance\Compliance as ComplianceResource;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail, HasLocalePreference
 {
     use Notifiable, HasApiTokens;
 
@@ -38,6 +42,7 @@ class User extends Authenticatable
         'locale',
         'currency_id',
         'fluid_container',
+        'temperature_scale',
         'name_order',
         'google2fa_secret',
     ];
@@ -57,34 +62,14 @@ class User extends Authenticatable
     ];
 
     /**
-     * Create a new User.
+     * The attributes that should be cast to native types.
      *
-     * @param int $account_id
-     * @param string $first_name
-     * @param string $last_name
-     * @param string $email
-     * @param string $password
-     * @param string $ipAddress
-     * @return $this
+     * @var array
      */
-    public static function createDefault($account_id, $first_name, $last_name, $email, $password, $ipAddress = null, $lang = null)
-    {
-        // create the user
-        $user = new self;
-        $user->account_id = $account_id;
-        $user->first_name = $first_name;
-        $user->last_name = $last_name;
-        $user->email = $email;
-        $user->password = bcrypt($password);
-        $user->timezone = config('app.timezone');
-        $user->created_at = now();
-        $user->locale = $lang ?: App::getLocale();
-        $user->save();
-
-        $user->acceptPolicy($ipAddress);
-
-        return $user;
-    }
+    protected $casts = [
+        'profile_new_life_event_badge_seen' => 'boolean',
+        'admin' => 'boolean',
+    ];
 
     /**
      * Get the account record associated with the user.
@@ -97,19 +82,33 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the changelog records associated with the user.
+     * Get the contact record associated with the 'me' contact.
+     *
+     * @return HasOne
      */
-    public function changelogs()
+    public function me()
     {
-        return $this->belongsToMany(Changelog::class)->withPivot('read', 'upvote')->withTimestamps();
+        return $this->hasOne(Contact::class, 'id', 'me_contact_id');
     }
 
     /**
      * Get the term records associated with the user.
+     *
+     * @return BelongsToMany
      */
     public function terms()
     {
         return $this->belongsToMany(Term::class)->withPivot('ip_address')->withTimestamps();
+    }
+
+    /**
+     * Get the recovery codes associated with the user.
+     *
+     * @return HasMany
+     */
+    public function recoveryCodes()
+    {
+        return $this->hasMany(RecoveryCode::class);
     }
 
     /**
@@ -146,17 +145,6 @@ class User extends Authenticatable
         } else {
             return 'C';
         }
-    }
-
-    /**
-     * Get the user's locale.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public function getLocaleAttribute($value)
-    {
-        return $value;
     }
 
     /**
@@ -227,10 +215,11 @@ class User extends Authenticatable
     /**
      * Ecrypt the user's google_2fa secret.
      *
-     * @param  string  $value
-     * @return string
+     * @param string  $value
+     *
+     * @return void
      */
-    public function setGoogle2faSecretAttribute($value)
+    public function setGoogle2faSecretAttribute($value): void
     {
         $this->attributes['google2fa_secret'] = encrypt($value);
     }
@@ -243,11 +232,9 @@ class User extends Authenticatable
      */
     public function getGoogle2faSecretAttribute($value)
     {
-        if (is_null($value)) {
-            return $value;
+        if (! is_null($value)) {
+            return decrypt($value);
         }
-
-        return decrypt($value);
     }
 
     /**
@@ -255,49 +242,32 @@ class User extends Authenticatable
      * This is affected by the user settings regarding the hour of the day he
      * wants to be reminded.
      *
-     * @param Carbon $date
+     * @param Carbon|null $date
      * @return bool
      */
-    public function isTheRightTimeToBeReminded(Carbon $date)
+    public function isTheRightTimeToBeReminded($date)
     {
+        if (is_null($date)) {
+            return false;
+        }
+
         $isTheRightTime = true;
 
-        $dateToCompareTo = $date->hour(0)->minute(0)->second(0)->toDateString();
-        $currentHourOnUserTimezone = now($this->timezone)->format('H:00');
-        $currentDateOnUserTimezone = now($this->timezone)->hour(0)->minute(0)->second(0)->toDateString();
-        $defaultHourReminderShouldBeSent = $this->account->default_time_reminder_is_sent;
-
-        if ($dateToCompareTo != $currentDateOnUserTimezone) {
+        // compare date with current date for the user
+        if (! $date->isSameDay(now($this->timezone))) {
             $isTheRightTime = false;
         }
+
+        // compare current hour for the user with the hour they want to be
+        // reminded as per the hour set on the profile
+        $currentHourOnUserTimezone = now($this->timezone)->format('H:00');
+        $defaultHourReminderShouldBeSent = $this->account->default_time_reminder_is_sent;
 
         if ($defaultHourReminderShouldBeSent != $currentHourOnUserTimezone) {
             $isTheRightTime = false;
         }
 
         return $isTheRightTime;
-    }
-
-    /**
-     * Check if user has one or more unread changelog entries.
-     *
-     * @return bool
-     */
-    public function hasUnreadChangelogs()
-    {
-        return $this->changelogs()->wherePivot('read', 0)->count() > 0;
-    }
-
-    /**
-     * Mark all changelog entries as read.
-     *
-     * @return void
-     */
-    public function markChangelogAsRead()
-    {
-        DB::table('changelog_user')
-            ->where('user_id', $this->id)
-            ->update(['read' => 1]);
     }
 
     /**
@@ -370,7 +340,7 @@ class User extends Authenticatable
     /**
      * Get the list of all the policies the user has signed.
      *
-     * @return array
+     * @return \Illuminate\Support\Collection
      */
     public function getAllCompliances()
     {
@@ -415,14 +385,26 @@ class User extends Authenticatable
     }
 
     /**
-     * Send the given reminder using all the ways the user wants to be reminded.
-     * Currently only email is supported.
+     * Send the email verification notification.
      *
-     * @param  Reminder $reminder
-     * @return
+     * @return void
      */
-    public function sendReminder(Reminder $reminder)
+    public function sendEmailVerificationNotification()
     {
-        dispatch(new SendReminderEmail($reminder, $this));
+        /** @var int $count */
+        $count = Account::count();
+        if (config('monica.signup_double_optin') && $count > 1) {
+            $this->notify(new VerifyEmail());
+        }
+    }
+
+    /**
+     * Get the preferred locale of the entity.
+     *
+     * @return string|null
+     */
+    public function preferredLocale()
+    {
+        return $this->locale;
     }
 }

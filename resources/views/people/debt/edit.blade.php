@@ -7,7 +7,7 @@
     <div class="breadcrumb">
       <div class="{{ Auth::user()->getFluidLayout() }}">
         <div class="row">
-          <div class="col-xs-12">
+          <div class="col-12">
             <ul class="horizontal">
               <li>
                 <a href="{{ route('dashboard.index') }}">{{ trans('app.breadcrumb_dashboard') }}</a>
@@ -31,10 +31,10 @@
     <div class="main-content central-form">
       <div class="{{ Auth::user()->getFluidLayout() }}">
         <div class="row">
-          <div class="col-xs-12 col-sm-6 col-sm-offset-3 col-sm-offset-3-right">
+          <div class="col-12 col-sm-6 offset-sm-3 offset-sm-3-right">
             @include('people.debt.form', [
               'method' => 'PUT',
-              'action' => route('people.debt.update', [$contact, $debt]),
+              'action' => route('people.debts.update', [$contact, $debt]),
               'update_or_add' =>'edit'
             ])
           </div>

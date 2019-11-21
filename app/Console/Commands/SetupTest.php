@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Console\Application;
 
 class SetupTest extends Command
 {
@@ -12,7 +13,7 @@ class SetupTest extends Command
      * @var string
      */
     protected $signature = 'setup:test
-                            {--skipSeed : Whether we should populate the database with fake data}';
+                            {--skipSeed : Skip the populate database with fake data.}';
 
     /**
      * The console command description.
@@ -37,7 +38,7 @@ class SetupTest extends Command
         $this->artisan('✓ Symlink the storage folder', 'storage:link');
 
         if (! $this->option('skipSeed')) {
-            $this->artisan('✓ Filling  database with fake data', 'db:seed', ['--class' => 'FakeContentTableSeeder']);
+            $this->artisan('✓ Filling database with fake data', 'db:seed', ['--class' => 'FakeContentTableSeeder']);
         }
 
         $this->line('');
@@ -67,7 +68,7 @@ class SetupTest extends Command
     public function artisan($message, $command, array $arguments = [])
     {
         $this->info($message);
-        $this->line('php artisan '.$command);
+        $this->line(Application::formatCommandString($command));
         $this->callSilent($command, $arguments);
         $this->line('');
     }

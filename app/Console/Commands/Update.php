@@ -18,7 +18,10 @@ class Update extends Command
      *
      * @var string
      */
-    protected $signature = 'monica:update {--force} {--composer-install} {--dev}';
+    protected $signature = 'monica:update
+                            {--force : Force the operation to run when in production.}
+                            {--composer-install : Updating composer dependencies.}
+                            {--dev : Install dev dependencies too.}';
 
     /**
      * The console command description.
@@ -36,8 +39,6 @@ class Update extends Command
 
     /**
      * Create a new command.
-     *
-     * @param CommandExecutorInterface
      */
     public function __construct()
     {
@@ -48,9 +49,9 @@ class Update extends Command
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return void
      */
-    public function handle()
+    public function handle(): void
     {
         if ($this->confirmToProceed()) {
             try {
@@ -79,7 +80,7 @@ class Update extends Command
                 }
 
                 if ($this->option('composer-install') === true) {
-                    $this->commandExecutor->exec('✓ Updating composer dependencies', 'composer install --no-interaction --no-suggest --ignore-platform-reqs'.($this->option('dev') === false ? '--no-dev' : ''));
+                    $this->commandExecutor->exec('✓ Updating composer dependencies', 'composer install --no-interaction --no-suggest --ignore-platform-reqs'.($this->option('dev') === false ? ' --no-dev' : ''));
                 }
 
                 if ($this->getLaravel()->environment() != 'testing' && ! file_exists(public_path('storage'))) {
@@ -117,12 +118,12 @@ class Update extends Command
 
         $databasename = $connection->getDatabaseName();
 
-        $schemata = $connection->table('information_schema.schemata')
-                ->select('DEFAULT_CHARACTER_SET_NAME')
-                ->where('schema_name', '=', $databasename)
-                ->get();
+        $schemata = DB::select(
+            'select DEFAULT_CHARACTER_SET_NAME from information_schema.schemata where schema_name = ?',
+            [$databasename]
+        );
 
-        $schema = $schemata->first()->DEFAULT_CHARACTER_SET_NAME;
+        $schema = $schemata[0]->DEFAULT_CHARACTER_SET_NAME;
 
         return config('database.use_utf8mb4') && $schema == 'utf8'
             || ! config('database.use_utf8mb4') && $schema == 'utf8mb4';

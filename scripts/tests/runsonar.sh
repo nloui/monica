@@ -1,5 +1,6 @@
 #!/bin/bash
 
+RUNREVPARSE=false
 if [ "$CIRCLECI" == "true" ]; then
   if [[ ! -z $CIRCLE_PULL_REQUEST ]] ; then
     CIRCLE_PR_NUMBER="${CIRCLE_PR_NUMBER:-${CIRCLE_PULL_REQUEST##*/}}"
@@ -11,15 +12,39 @@ if [ "$CIRCLECI" == "true" ]; then
   fi
   BRANCH=${CIRCLE_BRANCH:-$CIRCLE_TAG}
   PR_NUMBER=${CIRCLE_PR_NUMBER:-false}
-  BUILD=$CIRCLE_BUILD_NUM
-  SHA1=$CIRCLE_SHA1
-else
+  BUILD_NUMBER=$CIRCLE_BUILD_NUM
+  GIT_COMMIT=$CIRCLE_SHA1
+  RUNREVPARSE=true
+elif [ "$TRAVIS" == "true" ]; then
   REPO=$TRAVIS_REPO_SLUG
   BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}
   PR_NUMBER=$TRAVIS_PULL_REQUEST
-  BUILD=$TRAVIS_BUILD_NUMBER
-  SHA1=${TRAVIS_PULL_REQUEST_SHA:-$TRAVIS_COMMIT}
+  BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
+  GIT_COMMIT=${TRAVIS_PULL_REQUEST_SHA:-$TRAVIS_COMMIT}
+elif [ "$TF_BUILD" == "True" ]; then
+  REPO=$BUILD_REPOSITORY_NAME
+  BRANCH=${SYSTEM_PULLREQUEST_SOURCEBRANCH:-$BUILD_SOURCEBRANCHNAME}
+  PR_NUMBER=${SYSTEM_PULLREQUEST_PULLREQUESTNUMBER:-false}
+  BUILD_NUMBER=$BUILD_BUILDNUMBER
+  if [[ -z $GIT_COMMIT ]]; then
+    GIT_COMMIT=$(git rev-parse --verify "HEAD^2" 2>/dev/null || echo $BUILD_SOURCEVERSION)
+  fi
+elif [[ -n $BUILD_NUMBER ]]; then
+  echo "CHANGE_ID=$CHANGE_ID"
+  echo "CHANGE_URL=$CHANGE_URL"
+  REPO=${CHANGE_URL##https://github.com/}
+  if [[ ! -z $CHANGE_ID ]] ; then
+    REPO=${REPO%%/pull/$CHANGE_ID}
+  fi
+  PR_NUMBER=${CHANGE_ID:-false}
+  BRANCH=$BRANCH_NAME
 fi
+
+echo "REPO=$REPO"
+echo "BRANCH=$BRANCH"
+echo "PR_NUMBER=$PR_NUMBER"
+echo "BUILD_NUMBER=$BUILD_NUMBER"
+echo "GIT_COMMIT=$GIT_COMMIT"
 
 set -euo pipefail
 
@@ -32,7 +57,7 @@ function installSonar {
   # set version of sonar scanner to use :
   sonarversion=${SONAR_VERSION:-}
   if [ -z "${sonarversion:-}" ]; then
-    sonarversion=3.2.0.1227
+    sonarversion=3.3.0.1492
   fi
   echo "== Using sonarscanner $sonarversion"
 
@@ -42,15 +67,20 @@ function installSonar {
     echo "== Downloading sonarscanner $sonarversion"
     java_path=$(which java || true)
     if [ -x "$java_path" ]; then
-      wget --quiet --continue https://sonarsource.bintray.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$sonarversion.zip
+      wget --quiet --continue https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$sonarversion.zip
       unzip -q sonar-scanner-cli-$sonarversion.zip
       rm sonar-scanner-cli-$sonarversion.zip
     else    
-      wget --quiet --continue https://sonarsource.bintray.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$sonarversion-linux.zip
+      wget --quiet --continue https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$sonarversion-linux.zip
       unzip -q sonar-scanner-cli-$sonarversion-linux.zip
       rm sonar-scanner-cli-$sonarversion-linux.zip
       mv sonar-scanner-$sonarversion-linux sonar-scanner-$sonarversion
     fi
+  else
+    pushd sonar-scanner-$sonarversion > /dev/null
+    chmod a+x bin/sonar-scanner
+    test -f jre/bin/java && chmod a+x jre/bin/java
+    popd > /dev/null
   fi
   export SONAR_SCANNER_HOME=$HOME/sonarscanner/sonar-scanner-$sonarversion
   export PATH=$SONAR_SCANNER_HOME/bin:$PATH
@@ -69,9 +99,9 @@ function CommonParams {
        -Dsonar.organization=$SONAR_ORGANIZATION \
        -Dsonar.php.tests.reportPath=$SONAR_RESULT \
        -Dsonar.php.coverage.reportPaths=$SONAR_COVERAGE \
-       -Dsonar.analysis.buildNumber=$BUILD \
-       -Dsonar.analysis.pipeline=$BUILD \
-       -Dsonar.analysis.sha1=$SHA1 \
+       -Dsonar.analysis.buildNumber=$BUILD_NUMBER \
+       -Dsonar.analysis.pipeline=$BUILD_NUMBER \
+       -Dsonar.analysis.sha1=$GIT_COMMIT \
        -Dsonar.analysis.repository=$REPO \
        $extra
 }
@@ -80,17 +110,19 @@ function gitFetch {
   echo '== gitFetch'
   echo '# git fetch --all'
   git fetch --all
-  if [ -n "${PULL_REQUEST_BASEBRANCH:-}" ]; then
-    echo "# git branch -D $PULL_REQUEST_BASEBRANCH"
-    git branch -D $PULL_REQUEST_BASEBRANCH
-    echo "# git rev-parse origin/$PULL_REQUEST_BASEBRANCH"
-    git rev-parse origin/$PULL_REQUEST_BASEBRANCH
+  if [ "$RUNREVPARSE" == "true" ]; then
+    if [ -n "${PULL_REQUEST_BASEBRANCH:-}" ]; then
+      echo "# git branch -D $PULL_REQUEST_BASEBRANCH"
+      git branch -D $PULL_REQUEST_BASEBRANCH || true
+      echo "# git rev-parse origin/$PULL_REQUEST_BASEBRANCH"
+      git rev-parse origin/$PULL_REQUEST_BASEBRANCH
+    fi
   fi
   echo ''
 }
 
 function getSonarlauncher {
-  sonarlauncherversion=0.5.0
+  sonarlauncherversion=0.6.0
   mkdir -p ~/sonarlauncher
   pushd ~/sonarlauncher > /dev/null
   if [ ! -d "$sonarlauncherversion" ]; then
@@ -157,8 +189,13 @@ elif [ "$PR_NUMBER" != "false" ] && [ -n "${SONAR_TOKEN:-}" ] && [ -n "${GITHUB_
     echo '== SONAR:Analyze external pull request =='
     echo '========================================='
     echo "== External repository: $PULL_REQUEST_REPOSITORY"
-    PULL_REQUEST_BRANCH="$PULL_REQUEST_USER:$PULL_REQUEST_HEADBRANCH"
+    PULL_REQUEST_BRANCH="${PULL_REQUEST_USER}__$PULL_REQUEST_HEADBRANCH"
   fi
+  echo "PULL_REQUEST_BRANCH=$PULL_REQUEST_BRANCH"
+  echo "PULL_REQUEST_REPOSITORY=$PULL_REQUEST_REPOSITORY"
+  echo "PULL_REQUEST_USER=$PULL_REQUEST_USER"
+  echo "PULL_REQUEST_BASEBRANCH=$PULL_REQUEST_BASEBRANCH"
+  echo "PULL_REQUEST_HEADBRANCH=$PULL_REQUEST_HEADBRANCH"
 
   installSonar
   gitFetch

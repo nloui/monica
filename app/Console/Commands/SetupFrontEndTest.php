@@ -37,8 +37,6 @@ class SetupFrontEndTest extends Command
 
     /**
      * Create a new command.
-     *
-     * @param CommandExecutorInterface
      */
     public function __construct()
     {
@@ -49,9 +47,9 @@ class SetupFrontEndTest extends Command
     /**
      * Execute the console command.
      *
-     * @return mixed
+     * @return void
      */
-    public function handle()
+    public function handle(): void
     {
         $connection = DB::connection();
         if (file_exists('monicadump.sql')) {
@@ -72,12 +70,11 @@ class SetupFrontEndTest extends Command
             $this->commandExecutor->artisan('perform fresh migration', 'migrate:fresh');
         }
         $this->info('Create account');
-        $this->account = Account::createDefault('John', 'Doe', 'admin@admin.com', 'admin');
+        $this->account = Account::createDefault('John', 'Doe', 'admin@admin.com', 'admin0');
 
         // get first user
         $this->info('Fix first user');
         $user = $this->account->users()->first();
-        $user->confirmed = true;
-        $user->save();
+        $user->markEmailAsVerified();
     }
 }

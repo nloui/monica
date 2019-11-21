@@ -2,8 +2,9 @@
 
 namespace App\Helpers;
 
-use Auth;
+use function Safe\preg_match;
 use App\Models\Contact\Contact;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Contact\ContactFieldType;
 
 class SearchHelper
@@ -13,12 +14,12 @@ class SearchHelper
      *
      * @param  string $query
      * @param  int $limitPerPage
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return mixed
      */
     public static function searchContacts($query, $limitPerPage, $order)
     {
         $needle = $query;
-        $accountId = auth()->user()->account_id;
+        $accountId = Auth::user()->account_id;
 
         if (preg_match('/(.{1,})[:](.{1,})/', $needle, $matches)) {
             $search_field = $matches[1];
@@ -38,7 +39,7 @@ class SearchHelper
                 ]);
             })->paginate($limitPerPage);
         } else {
-            $results = Contact::search($needle, $accountId, $limitPerPage, $order, 'and is_partial=0');
+            $results = Contact::search($needle, $accountId, $limitPerPage, $order, 'AND '.DBHelper::getTable('contacts').'.`is_partial` = FALSE');
         }
 
         return $results;

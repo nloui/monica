@@ -3,7 +3,7 @@
 namespace App\Models\Contact;
 
 use App\Models\Account\Account;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\ModelBinding as Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +17,20 @@ class ContactFieldType extends Model
     protected $guarded = ['id'];
 
     protected $table = 'contact_field_types';
+
+    /**
+     * Email type contact field.
+     *
+     * @var string
+     */
+    public const EMAIL = 'email';
+
+    /**
+     * Phone type contact field.
+     *
+     * @var string
+     */
+    public const PHONE = 'phone';
 
     /**
      * Get the account record associated with the contact field type.

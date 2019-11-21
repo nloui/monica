@@ -4,8 +4,10 @@ namespace App\Models\Contact;
 
 use Parsedown;
 use App\Models\Account\Account;
+use App\Models\Instance\Emotion\Emotion;
 use App\Models\ModelBindingWithContact as Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Call extends Model
 {
@@ -22,6 +24,23 @@ class Call extends Model
      * @var array
      */
     protected $dates = ['called_at'];
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'contact_called' => 'boolean',
+    ];
+
+    /**
+     * Eager load with every call.
+     */
+    protected $with = [
+        'account',
+        'contact',
+    ];
 
     /**
      * Get the account record associated with the call.
@@ -44,9 +63,21 @@ class Call extends Model
     }
 
     /**
+     * Get the emotion records associated with the call.
+     *
+     * @return BelongsToMany
+     */
+    public function emotions()
+    {
+        return $this->belongsToMany(Emotion::class, 'emotion_call', 'call_id', 'emotion_id')
+                    ->withPivot('account_id', 'contact_id')
+                    ->withTimestamps();
+    }
+
+    /**
      * Return the markdown parsed body.
      *
-     * @return string
+     * @return string|null
      */
     public function getParsedContentAttribute()
     {

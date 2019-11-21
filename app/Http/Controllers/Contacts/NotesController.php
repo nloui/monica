@@ -14,7 +14,7 @@ class NotesController extends Controller
     /**
      * Get all the tasks of this contact.
      */
-    public function get(Contact $contact)
+    public function index(Contact $contact)
     {
         $notesCollection = collect([]);
         $notes = $contact->notes()->latest()->get();
@@ -42,14 +42,10 @@ class NotesController extends Controller
      */
     public function store(NotesRequest $request, Contact $contact)
     {
-        $note = $contact->notes()->create([
+        return $contact->notes()->create([
             'account_id' => auth()->user()->account_id,
             'body' => $request->get('body'),
         ]);
-
-        $contact->logEvent('note', $note->id, 'create');
-
-        return $note;
     }
 
     public function toggle(NoteToggleRequest $request, Contact $contact, Note $note)
@@ -63,8 +59,6 @@ class NotesController extends Controller
             $note->favorited_at = now();
         }
 
-        $contact->logEvent('note', $note->id, 'update');
-
         $note->save();
     }
 
@@ -74,9 +68,10 @@ class NotesController extends Controller
      * @param NotesRequest $request
      * @param Contact $contact
      * @param Note $note
-     * @return \Illuminate\Http\Response
+     *
+     * @return Note
      */
-    public function update(NotesRequest $request, Contact $contact, Note $note)
+    public function update(NotesRequest $request, Contact $contact, Note $note): Note
     {
         $note->update(
             $request->only([
@@ -84,8 +79,6 @@ class NotesController extends Controller
             ])
             + ['account_id' => $contact->account_id]
         );
-
-        $contact->logEvent('note', $note->id, 'update');
 
         return $note;
     }
@@ -95,12 +88,11 @@ class NotesController extends Controller
      *
      * @param Contact $contact
      * @param Note $note
-     * @return \Illuminate\Http\Response
+     *
+     * @return void
      */
-    public function destroy(Contact $contact, Note $note)
+    public function destroy(Contact $contact, Note $note): void
     {
         $note->delete();
-
-        $contact->events()->forObject($note)->get()->each->delete();
     }
 }

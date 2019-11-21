@@ -2,10 +2,12 @@
 
 namespace Tests\Unit\Services\Contact\Conversation;
 
-use Carbon\Carbon;
 use Tests\TestCase;
+use App\Models\Account\Account;
+use App\Models\Contact\Contact;
 use App\Models\Contact\Message;
 use App\Models\Contact\Conversation;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Services\Contact\Conversation\AddMessageToConversation;
@@ -18,13 +20,12 @@ class AddMessageToConversationTest extends TestCase
     {
         $request = [
             'contact_id' => 1,
-            'happened_at' => Carbon::now(),
+            'happened_at' => now(),
         ];
 
-        $this->expectException(\Exception::class);
+        $this->expectException(ValidationException::class);
 
-        $addMessageToConversation = new AddMessageToConversation;
-        $conversation = $addMessageToConversation->execute($request);
+        app(AddMessageToConversation::class)->execute($request);
     }
 
     public function test_it_stores_a_message()
@@ -36,12 +37,11 @@ class AddMessageToConversationTest extends TestCase
             'contact_id' => $conversation->contact->id,
             'conversation_id' => $conversation->id,
             'written_by_me' => true,
-            'written_at' => Carbon::now(),
+            'written_at' => now(),
             'content' => 'lorem ipsum',
         ];
 
-        $conversationService = new AddMessageToConversation;
-        $message = $conversationService->execute($request);
+        $message = app(AddMessageToConversation::class)->execute($request);
 
         $this->assertDatabaseHas('messages', [
             'id' => $message->id,
@@ -58,20 +58,49 @@ class AddMessageToConversationTest extends TestCase
         );
     }
 
-    public function test_it_throws_an_exception_if_conversation_is_not_found()
+    public function test_it_throws_an_exception_if_contact_is_not_found()
     {
+        $account = factory(Account::class)->create();
+        $contact = factory(Contact::class)->create([
+            'account_id' => $account->id,
+        ]);
+        $conversation = factory(Conversation::class)->create([
+            'account_id' => $account->id,
+        ]);
         $request = [
-            'conversation_id' => 12343123,
-            'contact_id' => 12343123,
-            'account_id' => 12343123,
+            'conversation_id' => $conversation->id,
+            'contact_id' => $contact->id,
+            'account_id' => $account->id,
             'written_by_me' => true,
-            'written_at' => Carbon::now(),
+            'written_at' => now(),
             'content' => 'lorem ipsum',
         ];
 
         $this->expectException(ModelNotFoundException::class);
 
-        $conversationService = new AddMessageToConversation;
-        $conversation = $conversationService->execute($request);
+        app(AddMessageToConversation::class)->execute($request);
+    }
+
+    public function test_it_throws_an_exception_if_conversation_is_not_found2()
+    {
+        $account = factory(Account::class)->create();
+        $contact = factory(Contact::class)->create([
+            'account_id' => $account->id,
+        ]);
+        $conversation = factory(Conversation::class)->create([
+            'contact_id' => $contact->id,
+        ]);
+        $request = [
+            'conversation_id' => $conversation->id,
+            'contact_id' => $contact->id,
+            'account_id' => $account->id,
+            'written_by_me' => true,
+            'written_at' => now(),
+            'content' => 'lorem ipsum',
+        ];
+
+        $this->expectException(ModelNotFoundException::class);
+
+        app(AddMessageToConversation::class)->execute($request);
     }
 }

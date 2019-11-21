@@ -5,6 +5,7 @@ Monica can be installed on a variety of platforms. The choice of the platform is
 - [Requirements](#requirements)
 - [Installation instructions for specific platforms](#installation-instructions-for-specific-platforms)
     - [Generic Linux instructions](#generic-linux-instructions)
+    - [Extract instructions](#extra-instructions)
     - [Platforms](#platforms)
 
 <a id="markdown-requirements" name="requirements"></a>
@@ -13,7 +14,7 @@ Monica can be installed on a variety of platforms. The choice of the platform is
 If you don't want to use Docker, the best way to setup the project is to use the same configuration that [Homestead](https://laravel.com/docs/homestead) uses. Basically, Monica depends on the following:
 
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-* PHP 7.1+
+* PHP 7.2+
 * [Composer](https://getcomposer.org/)
 * [MySQL](https://www.mysql.com/)
 * Optional: Redis or Beanstalk
@@ -28,6 +29,10 @@ The preferred OS distribution is Ubuntu 16.04, simply because all the developmen
 * [Generic Instructions](/docs/installation/generic.md)
 * [Ubuntu](/docs/installation/ubuntu.md)
 * [Debian](/docs/installation/debian.md)
+
+<a id="markdown-extra-instructions" name="extra-instructions"></a>
+### Extract instructions
+* [Enable mobile application connection](/docs/installation/mobile.md)
 
 <a id="markdown-platforms" name="platforms"></a>
 ### Platforms

@@ -18,7 +18,7 @@ class ApiCurrencyControllerTest extends ApiTestCase
         'symbol',
     ];
 
-    public function test_it_gets_a_list_of_currencies()
+    public function test_currency_get_all()
     {
         // in theory the currencies table is seeded by the initial script
         $response = $this->json('GET', '/api/currencies/');
@@ -31,18 +31,16 @@ class ApiCurrencyControllerTest extends ApiTestCase
         );
 
         $response->assertJsonFragment([
-            'total' => 156,
+            'total' => 153,
             'current_page' => 1,
         ]);
 
         $response->assertJsonStructure([
-            'data' => [
-                '*' => $this->jsonStructureCurrency,
-            ],
+            'data' => ['*' => $this->jsonStructureCurrency],
         ]);
     }
 
-    public function test_it_gets_a_single_currency()
+    public function test_currency_get_one()
     {
         $currency = factory(Currency::class)->create([]);
 
@@ -58,5 +56,12 @@ class ApiCurrencyControllerTest extends ApiTestCase
         $response->assertJsonStructure([
             'data' => $this->jsonStructureCurrency,
         ]);
+    }
+
+    public function test_currency_get_one_error()
+    {
+        $response = $this->json('GET', '/api/currencies/0');
+
+        $this->expectNotFound($response);
     }
 }

@@ -10,7 +10,7 @@ class DBHelper
     /**
      * Get the version of DB engine.
      *
-     * @return string
+     * @return string|null
      */
     public static function version()
     {
@@ -24,7 +24,7 @@ class DBHelper
     /**
      * Test if db version if greater than $version param.
      *
-     * @param string
+     * @param string $version
      * @return bool
      */
     public static function testVersion($version)
@@ -33,13 +33,23 @@ class DBHelper
     }
 
     /**
-     * @return \Illuminate\Support\Collection
+     * Get list of tables on this instance.
+     *
+     * @return array
      */
     public static function getTables()
     {
-        return DB::table('information_schema.tables')
-            ->select('table_name')
-            ->where('table_schema', '=', DB::connection()->getDatabaseName())
-            ->get();
+        return DB::select('SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = :table_schema
+                AND table_name LIKE :table_prefix', [
+            'table_schema' => DB::connection()->getDatabaseName(),
+            'table_prefix' => '%'.DB::connection()->getTablePrefix().'%',
+        ]);
+    }
+
+    public static function getTable($name)
+    {
+        return '`'.DB::connection()->getTablePrefix().$name.'`';
     }
 }
